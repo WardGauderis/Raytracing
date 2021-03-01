@@ -3,6 +3,7 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, 
 
 pub use Vec3 as Point3;
 pub use Vec3 as Color;
+use crate::util::{random_f64, random_f64_range};
 
 #[derive(Default, Copy, Clone)]
 pub struct Vec3 {
@@ -31,9 +32,24 @@ impl Vec3 {
 	pub fn length_squared(&self) -> f64 {
 		self.e[0] * self.e[0] + self.e[1] * self.e[1] + self.e[2] * self.e[2]
 	}
+
+	#[inline]
+	pub fn random() -> Vec3 {
+		Vec3::new(random_f64(), random_f64(), random_f64())
+	}
+
+	#[inline]
+	pub fn random_range(min: f64, max: f64) -> Vec3 {
+		Vec3::new(random_f64_range(min, max), random_f64_range(min, max), random_f64_range(min, max))
+	}
+
+	pub fn near_zero(&self) -> bool {
+		let s = 1e-8;
+		self.e[0].abs() < s && self.e[1].abs() < s && self.e[2].abs() < s
+	}
 }
 
-impl Neg for &Vec3 {
+impl Neg for Vec3 {
 	type Output = Vec3;
 
 	fn neg(self) -> Self::Output {
@@ -153,4 +169,31 @@ pub fn cross(u: &Vec3, v: &Vec3) -> Vec3 {
 #[inline]
 pub fn unit_vector(v: &Vec3) -> Vec3 {
 	*v / v.length()
+}
+
+pub fn random_in_unit_sphere() -> Vec3 {
+	loop {
+		let p = Vec3::random_range(-1.0, 1.0);
+		if p.length_squared() >= 1.0 {
+			continue;
+		}
+		return p;
+	}
+}
+
+pub fn random_unit_vector() -> Vec3 {
+	unit_vector(&random_in_unit_sphere())
+}
+
+pub fn random_in_hemisphere(normal: &Vec3) -> Vec3 {
+	let in_unit_sphere = random_in_unit_sphere();
+	if dot(&in_unit_sphere, &normal) > 0.0 {
+		in_unit_sphere
+	} else {
+		-in_unit_sphere
+	}
+}
+
+pub fn reflect(v: &Vec3, n: &Vec3) -> Vec3{
+	*v - 2.0 * dot(v, n) * *n
 }
