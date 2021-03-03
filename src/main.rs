@@ -7,11 +7,11 @@ use crate::camera::Camera;
 use crate::color::write_color;
 use crate::hittable::Hittable;
 use crate::hittable_list::HittableList;
+use crate::material::{Lambertian, Metal};
 use crate::ray::Ray;
 use crate::sphere::Sphere;
 use crate::util::random_f64;
 use crate::vec3::{Color, Point3, random_in_hemisphere, random_in_unit_sphere, random_unit_vector, unit_vector};
-use crate::material::{Lambertian, Metal};
 
 mod vec3;
 mod color;

@@ -5,7 +5,7 @@ pub use Vec3 as Point3;
 pub use Vec3 as Color;
 use crate::util::{random_f64, random_f64_range};
 
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Clone, Copy)]
 pub struct Vec3 {
 	pub e: [f64; 3]
 }
@@ -50,6 +50,14 @@ impl Vec3 {
 }
 
 impl Neg for Vec3 {
+	type Output = Vec3;
+
+	fn neg(self) -> Self::Output {
+		Self::Output::new(-self.e[0], -self.e[1], -self.e[2])
+	}
+}
+
+impl Neg for &Vec3 {
 	type Output = Vec3;
 
 	fn neg(self) -> Self::Output {
@@ -118,6 +126,15 @@ impl Sub for Vec3 {
 	}
 }
 
+impl Sub<Vec3> for &Vec3 {
+	type Output = Vec3;
+
+	#[inline]
+	fn sub(self, rhs: Vec3) -> Self::Output {
+		Self::Output::new(self.e[0] - rhs.e[0], self.e[1] - rhs.e[1], self.e[2] - rhs.e[2])
+	}
+}
+
 impl Mul for Vec3 {
 	type Output = Vec3;
 
@@ -132,6 +149,15 @@ impl Mul<Vec3> for f64 {
 
 	#[inline]
 	fn mul(self, rhs: Vec3) -> Self::Output {
+		Self::Output::new(self * rhs.e[0], self * rhs.e[1], self * rhs.e[2])
+	}
+}
+
+impl Mul<&Vec3> for f64 {
+	type Output = Vec3;
+
+	#[inline]
+	fn mul(self, rhs: &Vec3) -> Self::Output {
 		Self::Output::new(self * rhs.e[0], self * rhs.e[1], self * rhs.e[2])
 	}
 }
@@ -154,6 +180,15 @@ impl Div<f64> for Vec3 {
 	}
 }
 
+impl Div<f64> for &Vec3 {
+	type Output = Vec3;
+
+	#[inline]
+	fn div(self, rhs: f64) -> Self::Output {
+		1.0 / rhs * self
+	}
+}
+
 #[inline]
 pub fn dot(u: &Vec3, v: &Vec3) -> f64 {
 	u.e[0] * v.e[0] + u.e[1] * v.e[1] + u.e[2] * v.e[2]
@@ -168,7 +203,7 @@ pub fn cross(u: &Vec3, v: &Vec3) -> Vec3 {
 
 #[inline]
 pub fn unit_vector(v: &Vec3) -> Vec3 {
-	*v / v.length()
+	v / v.length()
 }
 
 pub fn random_in_unit_sphere() -> Vec3 {
@@ -194,6 +229,6 @@ pub fn random_in_hemisphere(normal: &Vec3) -> Vec3 {
 	}
 }
 
-pub fn reflect(v: &Vec3, n: &Vec3) -> Vec3{
-	*v - 2.0 * dot(v, n) * *n
+pub fn reflect(v: &Vec3, n: &Vec3) -> Vec3 {
+	v - 2.0 * dot(v, n) * n
 }

@@ -43,7 +43,7 @@ impl Hittable for Sphere {
 			t: root,
 			normal: Default::default(),
 			front_face: false,
-			mat_ptr: self.mat_ptr,
+			mat_ptr: self.mat_ptr.clone(),
 		});
 		let outward_normal = (rec.as_ref().unwrap().p - self.center) / self.radius;
 		rec.as_mut().unwrap().set_face_normal(r, &outward_normal);
