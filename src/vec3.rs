@@ -127,13 +127,14 @@ impl Add<Vec3> for &Vec3 {
 }
 
 impl Sub for Vec3 {
-	type Output = Vec3;
+	type Output = Self;
 
 	#[inline]
 	fn sub(self, rhs: Self) -> Self::Output {
 		Self::Output::new(self.e[0] - rhs.e[0], self.e[1] - rhs.e[1], self.e[2] - rhs.e[2])
 	}
 }
+
 
 impl Sub<Vec3> for &Vec3 {
 	type Output = Vec3;
@@ -235,6 +236,14 @@ pub fn random_in_hemisphere(normal: &Vec3) -> Vec3 {
 		in_unit_sphere
 	} else {
 		-in_unit_sphere
+	}
+}
+
+pub fn random_in_unit_disk() -> Vec3 {
+	loop {
+		let p = Vec3::new(random_f64_range(-1.0, 1.0), random_f64_range(-1.0, 1.0), 0.0);
+		if p.length_squared() >= 1.0 { continue; };
+		return p;
 	}
 }
 
