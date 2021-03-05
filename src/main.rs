@@ -8,22 +8,27 @@ use crate::color::write_color;
 use crate::hittable::Hittable;
 use crate::hittable_list::HittableList;
 use crate::material::{Dielectric, Lambertian, Material, Metal};
+use crate::movingsphere::MovingSphere;
 use crate::ray::Ray;
 use crate::sphere::Sphere;
 use crate::util::{random_f64, random_f64_range};
 use crate::vec3::{unit_vector, Color, Point3, Vec3};
+use crate::bvh::BVHNode;
 
+mod aabb;
+mod bvh;
 mod camera;
 mod color;
 mod hittable;
 mod hittable_list;
 mod material;
+mod movingsphere;
 mod ray;
 mod sphere;
 mod util;
 mod vec3;
 
-fn ray_color(r: &Ray, world: &impl Hittable, depth: i32) -> Color {
+fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Color {
 	if depth <= 0 {
 		return Color::default();
 	}
@@ -64,7 +69,15 @@ fn random_scene() -> HittableList {
 				if choose_mat < 0.8 {
 					let albedo = Color::random() * Color::random();
 					sphere_material = Rc::new(Lambertian::new(albedo));
-					world.add(Rc::new(Sphere::new(center, 0.2, sphere_material)));
+					let center2 = center + Vec3::new(0.0, random_f64_range(0.0, 0.5), 0.0);
+					world.add(Rc::new(MovingSphere::new(
+						center,
+						center2,
+						0.0,
+						1.0,
+						0.2,
+						sphere_material,
+					)));
 				} else if choose_mat < 0.95 {
 					let albedo = Color::random_range(0.5, 1.0);
 					let fuzz = random_f64_range(0.0, 0.5);
@@ -103,13 +116,14 @@ fn random_scene() -> HittableList {
 }
 
 fn main() {
-	let aspect_ratio = 3.0 / 2.0;
-	let image_width = 1200;
+	let aspect_ratio = 16.0 / 9.0;
+	let image_width = 400;
 	let image_height = (image_width as f64 / aspect_ratio) as i32;
-	let samples_per_pixel = 500;
+	let samples_per_pixel = 100;
 	let max_depth = 50;
 
 	let world = random_scene();
+	// let world = BVHNode::from_list(&world, 0.0, 1.0);
 
 	let lookfrom = Point3::new(13.0, 2.0, 3.0);
 	let lookat = Point3::new(0.0, 0.0, 0.0);
@@ -125,6 +139,8 @@ fn main() {
 		aspect_ratio,
 		aperture,
 		dist_to_focus,
+		0.0,
+		1.0,
 	);
 
 	let mut file = File::create("test.ppm").unwrap();

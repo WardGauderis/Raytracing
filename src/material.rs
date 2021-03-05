@@ -2,7 +2,6 @@ use crate::hittable::HitRecord;
 use crate::ray::Ray;
 use crate::util::random_f64;
 use crate::vec3::{dot, random_unit_vector, reflect, refract, unit_vector, Color, Vec3};
-use std::fs::create_dir;
 
 pub trait Material {
 	fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
@@ -28,7 +27,7 @@ impl Material for Lambertian {
 			scatter_direction = rec.normal;
 		}
 
-		Some((self.albedo, Ray::new(rec.p, scatter_direction)))
+		Some((self.albedo, Ray::new(rec.p, scatter_direction, r_in.time())))
 	}
 }
 
@@ -46,7 +45,11 @@ impl Metal {
 impl Material for Metal {
 	fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
 		let reflected = reflect(&unit_vector(&r_in.direction()), &rec.normal);
-		let scattered = Ray::new(rec.p, reflected + self.fuzz * random_unit_vector());
+		let scattered = Ray::new(
+			rec.p,
+			reflected + self.fuzz * random_unit_vector(),
+			r_in.time(),
+		);
 		let attenuation = self.albedo;
 		if dot(&scattered.direction(), &rec.normal) <= 0.0 {
 			None
@@ -93,6 +96,9 @@ impl Material for Dielectric {
 			direction = refract(&unit_direction, &rec.normal, refraction_ration)
 		}
 
-		Some((Color::new(1.0, 1.0, 1.0), Ray::new(rec.p, direction)))
+		Some((
+			Color::new(1.0, 1.0, 1.0),
+			Ray::new(rec.p, direction, r_in.time()),
+		))
 	}
 }
