@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::Write;
 use std::rc::Rc;
 
+use crate::bvh::BVHNode;
 use crate::camera::Camera;
 use crate::color::write_color;
 use crate::hittable::Hittable;
@@ -11,9 +12,9 @@ use crate::material::{Dielectric, Lambertian, Material, Metal};
 use crate::movingsphere::MovingSphere;
 use crate::ray::Ray;
 use crate::sphere::Sphere;
+use crate::texture::CheckerTexture;
 use crate::util::{random_f64, random_f64_range};
 use crate::vec3::{unit_vector, Color, Point3, Vec3};
-use crate::bvh::BVHNode;
 
 mod aabb;
 mod bvh;
@@ -25,8 +26,10 @@ mod material;
 mod movingsphere;
 mod ray;
 mod sphere;
+mod texture;
 mod util;
 mod vec3;
+mod perlin;
 
 fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Color {
 	if depth <= 0 {
@@ -47,7 +50,11 @@ fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Color {
 fn random_scene() -> HittableList {
 	let mut world = HittableList::default();
 
-	let ground_material = Rc::new(Lambertian::new(Color::new(0.5, 0.5, 0.5)));
+	let checker = Rc::new(CheckerTexture::new(
+		Color::new(0.2, 0.3, 0.1),
+		Color::new(0.9, 0.9, 0.9),
+	));
+	let ground_material = Rc::new(Lambertian::from(checker));
 	world.add(Rc::new(Sphere::new(
 		Point3::new(0.0, -1000.0, 0.0),
 		1000.0,
@@ -115,6 +122,27 @@ fn random_scene() -> HittableList {
 	world
 }
 
+fn two_spheres() -> HittableList {
+	let mut objects = HittableList::default();
+
+	let checker = Rc::new(CheckerTexture::new(
+		Color::new(0.2, 0.3, 0.1),
+		Color::new(0.9, 0.9, 0.9),
+	));
+	objects.add(Rc::new(Sphere::new(
+		Point3::new(0.0, -10.0, 0.0),
+		10.0,
+		Rc::new(Lambertian::from(checker.clone())),
+	)));
+	objects.add(Rc::new(Sphere::new(
+		Point3::new(0.0, 10.0, 0.0),
+		10.0,
+		Rc::new(Lambertian::from(checker)),
+	)));
+
+	objects
+}
+
 fn main() {
 	let aspect_ratio = 16.0 / 9.0;
 	let image_width = 400;
@@ -122,14 +150,30 @@ fn main() {
 	let samples_per_pixel = 100;
 	let max_depth = 50;
 
-	let world = random_scene();
-	// let world = BVHNode::from_list(&world, 0.0, 1.0);
+	let world;
+	let lookfrom;
+	let lookat;
+	let mut vfov = 40.0;
+	let mut aperture = 0.0;
 
-	let lookfrom = Point3::new(13.0, 2.0, 3.0);
-	let lookat = Point3::new(0.0, 0.0, 0.0);
+	match 0 {
+		1 => {
+			world = random_scene();
+			lookfrom = Point3::new(13.0, 2.0, 3.0);
+			lookat = Point3::new(0.0, 0.0, 0.0);
+			vfov = 20.0;
+			aperture = 0.1;
+		}
+		_ => {
+			world = two_spheres();
+			lookfrom = Point3::new(13.0, 2.0, 3.0);
+			lookat = Point3::new(0.0, 0.0, 0.0);
+			vfov = 20.0;
+		}
+	}
+
 	let vup = Vec3::new(0.0, 1.0, 0.0);
 	let dist_to_focus = 10.0;
-	let aperture = 0.1;
 
 	let cam = Camera::new(
 		lookfrom,

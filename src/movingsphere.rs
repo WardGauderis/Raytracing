@@ -67,6 +67,8 @@ impl Hittable for MovingSphere {
 			normal: Default::default(),
 			front_face: false,
 			mat_ptr: self.mat_ptr.clone(),
+			u: 0.0,
+			v: 0.0
 		});
 		let outward_normal = (rec.as_ref().unwrap().p - self.center(r.time())) / self.radius;
 		rec.as_mut().unwrap().set_face_normal(r, &outward_normal);
