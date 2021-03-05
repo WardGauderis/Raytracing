@@ -68,7 +68,7 @@ impl Dielectric {
 	fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
 		let mut r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
 		r0 = r0 * r0;
-		r0 + (1.0 - r0) * (1.0 - cosine).powf(0.5)
+		r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
 	}
 }
 
