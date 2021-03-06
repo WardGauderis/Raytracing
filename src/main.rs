@@ -12,7 +12,7 @@ use crate::material::{Dielectric, Lambertian, Material, Metal};
 use crate::movingsphere::MovingSphere;
 use crate::ray::Ray;
 use crate::sphere::Sphere;
-use crate::texture::CheckerTexture;
+use crate::texture::{CheckerTexture, NoiseTexture};
 use crate::util::{random_f64, random_f64_range};
 use crate::vec3::{unit_vector, Color, Point3, Vec3};
 
@@ -24,12 +24,12 @@ mod hittable;
 mod hittable_list;
 mod material;
 mod movingsphere;
+mod perlin;
 mod ray;
 mod sphere;
 mod texture;
 mod util;
 mod vec3;
-mod perlin;
 
 fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Color {
 	if depth <= 0 {
@@ -86,7 +86,7 @@ fn random_scene() -> HittableList {
 						sphere_material,
 					)));
 				} else if choose_mat < 0.95 {
-					let albedo = Color::random_range(0.5, 1.0);
+					let albedo = Color::random_in_range(0.5, 1.0);
 					let fuzz = random_f64_range(0.0, 0.5);
 					sphere_material = Rc::new(Metal::new(albedo, fuzz));
 					world.add(Rc::new(Sphere::new(center, 0.2, sphere_material)));
@@ -143,6 +143,24 @@ fn two_spheres() -> HittableList {
 	objects
 }
 
+fn two_perlin_spheres() -> HittableList {
+	let mut objects = HittableList::default();
+
+	let pertext = Rc::new(NoiseTexture::new(4.0));
+	objects.add(Rc::new(Sphere::new(
+		Point3::new(0.0, -1000.0, 0.0),
+		1000.0,
+		Rc::new(Lambertian::from(pertext.clone())),
+	)));
+	objects.add(Rc::new(Sphere::new(
+		Point3::new(0.0, 2.0, 0.0),
+		2.0,
+		Rc::new(Lambertian::from(pertext)),
+	)));
+
+	objects
+}
+
 fn main() {
 	let aspect_ratio = 16.0 / 9.0;
 	let image_width = 400;
@@ -164,8 +182,14 @@ fn main() {
 			vfov = 20.0;
 			aperture = 0.1;
 		}
-		_ => {
+		2 => {
 			world = two_spheres();
+			lookfrom = Point3::new(13.0, 2.0, 3.0);
+			lookat = Point3::new(0.0, 0.0, 0.0);
+			vfov = 20.0;
+		}
+		_ => {
+			world = two_perlin_spheres();
 			lookfrom = Point3::new(13.0, 2.0, 3.0);
 			lookat = Point3::new(0.0, 0.0, 0.0);
 			vfov = 20.0;
