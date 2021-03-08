@@ -117,7 +117,7 @@ impl Material for Dielectric {
 	}
 }
 
-struct DiffuseLight {
+pub struct DiffuseLight {
 	emit: Rc<dyn Texture,>,
 }
 

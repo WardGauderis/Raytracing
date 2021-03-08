@@ -1,13 +1,20 @@
 #![feature(destructuring_assignment)]
-use std::{f64::INFINITY, fs::File, io::Write, rc::Rc};
+use std::{
+	f64::INFINITY,
+	fs::File,
+	io::{stderr, Write},
+	rc::Rc,
+	time::{Duration, Instant},
+};
 
 use crate::{
+	aarect::XYRect,
 	bvh::BVHNode,
 	camera::Camera,
 	color::write_color,
 	hittable::Hittable,
 	hittable_list::HittableList,
-	material::{Dielectric, Lambertian, Material, Metal},
+	material::{Dielectric, DiffuseLight, Lambertian, Material, Metal},
 	movingsphere::MovingSphere,
 	ray::Ray,
 	sphere::Sphere,
@@ -17,6 +24,7 @@ use crate::{
 };
 
 mod aabb;
+mod aarect;
 mod bvh;
 mod camera;
 mod color;
@@ -169,11 +177,44 @@ fn earth() -> HittableList {
 	HittableList::new(globe,)
 }
 
+fn simple_light() -> HittableList {
+	let mut objects = HittableList::default();
+
+	let pertext = Rc::new(NoiseTexture::new(4.0,),);
+	objects.add(Rc::new(Sphere::new(
+		Point3::new(0.0, -1000.0, 0.0,),
+		1000.0,
+		Rc::new(Lambertian::from(pertext.clone(),),),
+	),),);
+	objects.add(Rc::new(Sphere::new(
+		Point3::new(0.0, 2.0, 0.0,),
+		2.0,
+		Rc::new(Lambertian::from(pertext,),),
+	),),);
+
+	let difflight = Rc::new(DiffuseLight::from(Color::new(4.0, 4.0, 4.0,),),);
+	objects.add(Rc::new(XYRect::new(
+		3.0,
+		5.0,
+		1.0,
+		3.0,
+		-2.0,
+		difflight.clone(),
+	),),);
+	objects.add(Rc::new(Sphere::new(
+		Point3::new(0.0, 7.0, 0.0,),
+		2.0,
+		difflight,
+	),),);
+
+	objects
+}
+
 fn main() {
 	let aspect_ratio = 16.0 / 9.0;
 	let image_width = 400;
 	let image_height = (image_width as f64 / aspect_ratio) as i32;
-	let samples_per_pixel = 100;
+	let mut samples_per_pixel = 100;
 	let max_depth = 50;
 
 	let world;
@@ -186,7 +227,7 @@ fn main() {
 	match 0 {
 		1 => {
 			world = random_scene();
-			background = Color::new(0.70, 0.80, 1.00);
+			background = Color::new(0.70, 0.80, 1.00,);
 			lookfrom = Point3::new(13.0, 2.0, 3.0,);
 			lookat = Point3::new(0.0, 0.0, 0.0,);
 			vfov = 20.0;
@@ -194,29 +235,36 @@ fn main() {
 		},
 		2 => {
 			world = two_spheres();
-			background = Color::new(0.70, 0.80, 1.00);
+			background = Color::new(0.70, 0.80, 1.00,);
 			lookfrom = Point3::new(13.0, 2.0, 3.0,);
 			lookat = Point3::new(0.0, 0.0, 0.0,);
 			vfov = 20.0;
 		},
 		3 => {
 			world = two_perlin_spheres();
-			background = Color::new(0.70, 0.80, 1.00);
+			background = Color::new(0.70, 0.80, 1.00,);
 			lookfrom = Point3::new(13.0, 2.0, 3.0,);
 			lookat = Point3::new(0.0, 0.0, 0.0,);
 			vfov = 20.0;
 		},
 		4 => {
 			world = earth();
-			background = Color::new(0.70, 0.80, 1.00);
+			background = Color::new(0.70, 0.80, 1.00,);
 			lookfrom = Point3::new(13.0, 2.0, 3.0,);
 			lookat = Point3::default();
 			vfov = 20.0;
 		},
 		_ => {
+			world = simple_light();
+			samples_per_pixel = 400;
 			background = Color::default();
-		}
+			lookfrom = Point3::new(26.0, 3.0, 6.0,);
+			lookat = Point3::new(0.0, 2.0, 0.0,);
+			vfov = 20.0;
+		},
 	}
+
+	let world = BVHNode::from_list(&world, 0.0, 1.0,);
 
 	let vup = Vec3::new(0.0, 1.0, 0.0,);
 	let dist_to_focus = 10.0;
@@ -237,8 +285,12 @@ fn main() {
 
 	write!(file, "P3\n{} {}\n255\n", image_width, image_height).unwrap();
 
+	let mut time_per_line = 0.0;
+	let mut max = 0.0;
+
 	for j in (0 .. image_height).into_iter().rev() {
-		eprintln!("\rScanlines remaining: {} ", j);
+		let now = Instant::now();
+
 		for i in 0 .. image_width {
 			let mut pixel_color = Color::default();
 			for _ in 0 .. samples_per_pixel {
@@ -249,6 +301,12 @@ fn main() {
 			}
 			write_color(&mut file, &pixel_color, samples_per_pixel,);
 		}
+
+		time_per_line = 0.9 * time_per_line + 0.1 * now.elapsed().as_secs_f64();
+		max = (time_per_line * j as f64).max(max,);
+		eprint!("\r{} scanlines; {}s", j, time_per_line * j as f64);
+		stderr().flush();
 	}
-	eprint!("\nDone\n");
+
+	eprint!("\nDone\n{}s", max);
 }
