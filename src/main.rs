@@ -31,20 +31,20 @@ mod texture;
 mod util;
 mod vec3;
 
-fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32,) -> Color {
+fn ray_color(r: &Ray, background: &Color, world: &dyn Hittable, depth: i32,) -> Color {
 	if depth <= 0 {
 		return Color::default();
 	}
 
 	if let Some(rec,) = world.hit(r, 0.001, INFINITY,) {
+		let emitted = rec.mat_ptr.emitted(rec.u, rec.v, &rec.p,);
 		if let Some((attenuation, scattered,),) = rec.mat_ptr.scatter(r, &rec,) {
-			return attenuation * ray_color(&scattered, world, depth - 1,);
+			return emitted + attenuation * ray_color(&scattered, background, world, depth - 1,);
 		}
-		return Color::default();
+		return emitted;
 	}
-	let unit_direction = unit_vector(&r.direction(),);
-	let t = 0.5 * (unit_direction.y() + 1.0);
-	(1.0 - t) * Color::new(1.0, 1.0, 1.0,) + t * Color::new(0.5, 0.7, 1.0,)
+
+	*background
 }
 
 fn random_scene() -> HittableList {
@@ -181,10 +181,12 @@ fn main() {
 	let lookat;
 	let mut vfov = 40.0;
 	let mut aperture = 0.0;
+	let mut background = Color::default();
 
 	match 0 {
 		1 => {
 			world = random_scene();
+			background = Color::new(0.70, 0.80, 1.00);
 			lookfrom = Point3::new(13.0, 2.0, 3.0,);
 			lookat = Point3::new(0.0, 0.0, 0.0,);
 			vfov = 20.0;
@@ -192,22 +194,28 @@ fn main() {
 		},
 		2 => {
 			world = two_spheres();
+			background = Color::new(0.70, 0.80, 1.00);
 			lookfrom = Point3::new(13.0, 2.0, 3.0,);
 			lookat = Point3::new(0.0, 0.0, 0.0,);
 			vfov = 20.0;
 		},
 		3 => {
 			world = two_perlin_spheres();
+			background = Color::new(0.70, 0.80, 1.00);
 			lookfrom = Point3::new(13.0, 2.0, 3.0,);
 			lookat = Point3::new(0.0, 0.0, 0.0,);
 			vfov = 20.0;
 		},
-		_ => {
+		4 => {
 			world = earth();
+			background = Color::new(0.70, 0.80, 1.00);
 			lookfrom = Point3::new(13.0, 2.0, 3.0,);
 			lookat = Point3::default();
 			vfov = 20.0;
 		},
+		_ => {
+			background = Color::default();
+		}
 	}
 
 	let vup = Vec3::new(0.0, 1.0, 0.0,);
@@ -237,7 +245,7 @@ fn main() {
 				let u = (i as f64 + random_f64()) / (image_width - 1) as f64;
 				let v = (j as f64 + random_f64()) / (image_height - 1) as f64;
 				let r = cam.get_ray(u, v,);
-				pixel_color += ray_color(&r, &world, max_depth,);
+				pixel_color += ray_color(&r, &background, &world, max_depth,);
 			}
 			write_color(&mut file, &pixel_color, samples_per_pixel,);
 		}
