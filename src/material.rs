@@ -5,7 +5,10 @@ use crate::{
 	ray::Ray,
 	texture::{SolidColor, Texture},
 	util::random_f64,
-	vec3::{dot, random_unit_vector, reflect, refract, unit_vector, Color, Point3, Vec3},
+	vec3::{
+		Color, dot, Point3, random_in_unit_sphere, random_unit_vector, reflect, refract,
+		unit_vector, Vec3,
+	},
 };
 
 pub trait Material {
@@ -136,7 +139,30 @@ impl From<Color,> for DiffuseLight {
 impl Material for DiffuseLight {
 	fn scatter(&self, r_in: &Ray, rec: &HitRecord,) -> Option<(Vec3, Ray,),> { None }
 
-	fn emitted(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
-		self.emit.value(u, v, p)
+	fn emitted(&self, u: f64, v: f64, p: &Vec3,) -> Vec3 { self.emit.value(u, v, p,) }
+}
+
+pub struct Isotrophic {
+	albedo: Rc<dyn Texture,>,
+}
+
+impl Isotrophic {
+	pub fn new(albedo: Rc<dyn Texture,>,) -> Self { Isotrophic { albedo, } }
+}
+
+impl From<Color,> for Isotrophic {
+	fn from(c: Color,) -> Self {
+		Isotrophic {
+			albedo: Rc::new(SolidColor::from(c,),),
+		}
+	}
+}
+
+impl Material for Isotrophic {
+	fn scatter(&self, r_in: &Ray, rec: &HitRecord,) -> Option<(Vec3, Ray,),> {
+		Some((
+			self.albedo.value(rec.u, rec.v, &rec.p,),
+			Ray::new(rec.p, random_in_unit_sphere(), r_in.time(),),
+		),)
 	}
 }

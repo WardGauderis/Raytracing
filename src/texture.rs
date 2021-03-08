@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use image::{flat::NormalForm::ImagePacked, open, GenericImageView};
+use image::{GenericImageView, open};
 
 use crate::{
 	perlin::Perlin,

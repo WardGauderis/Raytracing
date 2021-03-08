@@ -1,18 +1,15 @@
 #![feature(destructuring_assignment)]
-use std::{
-	f64::INFINITY,
-	fs::File,
-	io::{stderr, Write},
-	rc::Rc,
-	time::{Duration, Instant},
-};
+
+use std::{fs::File, io::Write, rc::Rc, time::Instant};
 
 use crate::{
-	aarect::XYRect,
+	_box::Box,
+	aarect::{XYRect, XZRect, YZRect},
 	bvh::BVHNode,
 	camera::Camera,
 	color::write_color,
-	hittable::Hittable,
+	constantmedium::ConstantMedium,
+	hittable::{Hittable, RotateY, Translate},
 	hittable_list::HittableList,
 	material::{Dielectric, DiffuseLight, Lambertian, Material, Metal},
 	movingsphere::MovingSphere,
@@ -20,14 +17,16 @@ use crate::{
 	sphere::Sphere,
 	texture::{CheckerTexture, ImageTexture, NoiseTexture},
 	util::{random_f64, random_f64_range},
-	vec3::{unit_vector, Color, Point3, Vec3},
+	vec3::{Color, Point3, Vec3},
 };
 
+mod _box;
 mod aabb;
 mod aarect;
 mod bvh;
 mod camera;
 mod color;
+mod constantmedium;
 mod hittable;
 mod hittable_list;
 mod material;
@@ -44,7 +43,7 @@ fn ray_color(r: &Ray, background: &Color, world: &dyn Hittable, depth: i32,) -> 
 		return Color::default();
 	}
 
-	if let Some(rec,) = world.hit(r, 0.001, INFINITY,) {
+	if let Some(rec,) = world.hit(r, 0.001, f64::INFINITY,) {
 		let emitted = rec.mat_ptr.emitted(rec.u, rec.v, &rec.p,);
 		if let Some((attenuation, scattered,),) = rec.mat_ptr.scatter(r, &rec,) {
 			return emitted + attenuation * ray_color(&scattered, background, world, depth - 1,);
@@ -210,10 +209,135 @@ fn simple_light() -> HittableList {
 	objects
 }
 
+fn cornell_box() -> HittableList {
+	let mut objects = HittableList::default();
+
+	let red = Rc::new(Lambertian::new(Color::new(0.65, 0.05, 0.05,),),);
+	let white = Rc::new(Lambertian::new(Color::new(0.73, 0.73, 0.73,),),);
+	let green = Rc::new(Lambertian::new(Color::new(0.12, 0.45, 0.15,),),);
+	let light = Rc::new(DiffuseLight::from(Color::new(15.0, 15.0, 15.0,),),);
+
+	objects.add(Rc::new(YZRect::new(0.0, 555.0, 0.0, 555.0, 555.0, green,),),);
+	objects.add(Rc::new(YZRect::new(0.0, 555.0, 0.0, 555.0, 0.0, red,),),);
+	objects.add(Rc::new(XZRect::new(
+		213.0, 343.0, 227.0, 332.0, 554.0, light,
+	),),);
+	objects.add(Rc::new(XZRect::new(
+		0.0,
+		555.0,
+		0.0,
+		555.0,
+		0.0,
+		white.clone(),
+	),),);
+	objects.add(Rc::new(XZRect::new(
+		0.0,
+		555.0,
+		0.0,
+		555.0,
+		555.0,
+		white.clone(),
+	),),);
+	objects.add(Rc::new(XYRect::new(
+		0.0,
+		555.0,
+		0.0,
+		555.0,
+		555.0,
+		white.clone(),
+	),),);
+
+	let box1 = Rc::new(Box::new(
+		&Point3::new(0.0, 0.0, 0.0,),
+		&Point3::new(165.0, 330.0, 165.0,),
+		white.clone(),
+	),);
+	let box1 = Rc::new(RotateY::new(box1, 15.0,),);
+	let box1 = Rc::new(Translate::new(box1, Vec3::new(265.0, 0.0, 295.0,),),);
+	objects.add(box1,);
+
+	let box2 = Rc::new(Box::new(
+		&Point3::new(0.0, 0.0, 0.0,),
+		&Point3::new(165.0, 165.0, 165.0,),
+		white,
+	),);
+	let box2 = Rc::new(RotateY::new(box2, -18.0,),);
+	let box2 = Rc::new(Translate::new(box2, Vec3::new(130.0, 0.0, 65.0,),),);
+	objects.add(box2,);
+
+	objects
+}
+
+fn cornell_smoke() -> HittableList {
+	let mut objects = HittableList::default();
+
+	let red = Rc::new(Lambertian::new(Color::new(0.65, 0.05, 0.05,),),);
+	let white = Rc::new(Lambertian::new(Color::new(0.73, 0.73, 0.73,),),);
+	let green = Rc::new(Lambertian::new(Color::new(0.12, 0.45, 0.15,),),);
+	let light = Rc::new(DiffuseLight::from(Color::new(7.0, 7.0, 7.0,),),);
+
+	objects.add(Rc::new(YZRect::new(0.0, 555.0, 0.0, 555.0, 555.0, green,),),);
+	objects.add(Rc::new(YZRect::new(0.0, 555.0, 0.0, 555.0, 0.0, red,),),);
+	objects.add(Rc::new(XZRect::new(
+		113.0, 443.0, 127.0, 432.0, 554.0, light,
+	),),);
+	objects.add(Rc::new(XZRect::new(
+		0.0,
+		555.0,
+		0.0,
+		555.0,
+		0.0,
+		white.clone(),
+	),),);
+	objects.add(Rc::new(XZRect::new(
+		0.0,
+		555.0,
+		0.0,
+		555.0,
+		555.0,
+		white.clone(),
+	),),);
+	objects.add(Rc::new(XYRect::new(
+		0.0,
+		555.0,
+		0.0,
+		555.0,
+		555.0,
+		white.clone(),
+	),),);
+
+	let box1 = Rc::new(Box::new(
+		&Point3::new(0.0, 0.0, 0.0,),
+		&Point3::new(165.0, 330.0, 165.0,),
+		white.clone(),
+	),);
+	let box1 = Rc::new(RotateY::new(box1, 15.0,),);
+	let box1 = Rc::new(Translate::new(box1, Vec3::new(265.0, 0.0, 295.0,),),);
+	objects.add(Rc::new(ConstantMedium::from_color(
+		box1,
+		0.01,
+		Color::default(),
+	),),);
+
+	let box2 = Rc::new(Box::new(
+		&Point3::new(0.0, 0.0, 0.0,),
+		&Point3::new(165.0, 165.0, 165.0,),
+		white,
+	),);
+	let box2 = Rc::new(RotateY::new(box2, -18.0,),);
+	let box2 = Rc::new(Translate::new(box2, Vec3::new(130.0, 0.0, 65.0,),),);
+	objects.add(Rc::new(ConstantMedium::from_color(
+		box2,
+		0.01,
+		Color::new(1.0, 1.0, 1.0,),
+	),),);
+
+	objects
+}
+
 fn main() {
-	let aspect_ratio = 16.0 / 9.0;
-	let image_width = 400;
-	let image_height = (image_width as f64 / aspect_ratio) as i32;
+	let mut aspect_ratio = 16.0 / 9.0;
+	let mut image_width = 400;
 	let mut samples_per_pixel = 100;
 	let max_depth = 50;
 
@@ -254,7 +378,7 @@ fn main() {
 			lookat = Point3::default();
 			vfov = 20.0;
 		},
-		_ => {
+		5 => {
 			world = simple_light();
 			samples_per_pixel = 400;
 			background = Color::default();
@@ -262,9 +386,30 @@ fn main() {
 			lookat = Point3::new(0.0, 2.0, 0.0,);
 			vfov = 20.0;
 		},
+		6 => {
+			world = cornell_box();
+			aspect_ratio = 1.0;
+			image_width = 600;
+			samples_per_pixel = 200;
+			background = Color::default();
+			lookfrom = Point3::new(278.0, 278.0, -800.0,);
+			lookat = Point3::new(278.0, 278.0, 0.0,);
+			vfov = 40.0;
+		},
+		_ => {
+			world = cornell_smoke();
+			aspect_ratio = 1.0;
+			image_width = 600;
+			samples_per_pixel = 200;
+			background = Color::default();
+			lookfrom = Point3::new(278.0, 278.0, -800.0,);
+			lookat = Point3::new(278.0, 278.0, 0.0,);
+			vfov = 40.0;
+		}
 	}
 
-	let world = BVHNode::from_list(&world, 0.0, 1.0,);
+	let image_height = (image_width as f64 / aspect_ratio) as i32;
+	// let world = BVHNode::from_list(&world, 0.0, 1.0,);
 
 	let vup = Vec3::new(0.0, 1.0, 0.0,);
 	let dist_to_focus = 10.0;
@@ -273,7 +418,7 @@ fn main() {
 		lookfrom,
 		lookat,
 		vup,
-		20.0,
+		vfov,
 		aspect_ratio,
 		aperture,
 		dist_to_focus,
@@ -304,9 +449,8 @@ fn main() {
 
 		time_per_line = 0.9 * time_per_line + 0.1 * now.elapsed().as_secs_f64();
 		max = (time_per_line * j as f64).max(max,);
-		eprint!("\r{} scanlines; {}s", j, time_per_line * j as f64);
-		stderr().flush();
+		eprint!("\r{} scanlines; {:.1}s;", j, time_per_line * j as f64);
 	}
 
-	eprint!("\nDone\n{}s", max);
+	eprint!("\nDone\n{:.1}s;\n", max);
 }

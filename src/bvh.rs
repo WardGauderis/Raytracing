@@ -1,11 +1,10 @@
 use std::{
 	cmp::{Ordering, Ordering::Less},
 	rc::Rc,
-	slice::RChunks,
 };
 
 use crate::{
-	aabb::{surrounding_box, AABB},
+	aabb::{AABB, surrounding_box},
 	hittable::{HitRecord, Hittable},
 	hittable_list::HittableList,
 	ray::Ray,
@@ -13,8 +12,8 @@ use crate::{
 };
 
 pub struct BVHNode {
-	pub left:  Rc<Hittable,>,
-	pub right: Rc<Hittable,>,
+	pub left:  Rc<dyn Hittable,>,
+	pub right: Rc<dyn Hittable,>,
 	pub aabb:  AABB,
 }
 
